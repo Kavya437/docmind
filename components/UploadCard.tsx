@@ -2,11 +2,13 @@
 import { FileUp } from "lucide-react";
 import { useRef, useState } from "react";
 import { extractText } from "@/lib/pdf";
+import SummaryCard from "@/components/SummaryCard";
 
 export default function UploadCard() {
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [selectedFile, setSelectedFile] = useState<File | null>(null);
     const [summary, setSummary] = useState("");
+    const [isLoading, setIsLoading] = useState(false);
     return (
         <section className="mx-auto max-w-4xl px-6 pb-20">
             <div className="rounded-3xl border-2 border-dashed border-neutral-700 bg-neutral-900/50 p-12 text-center transition hover:border-violet-500">
@@ -38,20 +40,32 @@ export default function UploadCard() {
                         if (!file) return;
 
                         setSelectedFile(file);
+                        setIsLoading(true);
+                        setSummary("");
 
-                        const text = await extractText(file);
+                        try {
+                            const text = await extractText(file);
 
-                        const response = await fetch("/api/summarize", {
-                            method: "POST",
-                            headers: {
-                                "Content-Type": "application/json",
-                            },
-                            body: JSON.stringify({ text }),
-                        });
+                            const response = await fetch("/api/summarize", {
+                                method: "POST",
+                                headers: {
+                                    "Content-Type": "application/json",
+                                },
+                                body: JSON.stringify({ text }),
+                            });
 
-                        const data = await response.json();
+                            const data = await response.json();
 
-                        setSummary(data.summary);
+                            if (!response.ok) {
+                                throw new Error(data.error || "Failed to generate summary.");
+                            }
+
+                            setSummary(data.summary);
+                        } catch (error) {
+                            console.error(error);
+                        } finally {
+                            setIsLoading(false);
+                        }
                     }}
                 />
 
@@ -65,14 +79,23 @@ export default function UploadCard() {
                     Supports PDF • Max 20 MB
                 </p>
 
-                {summary && (
-                    <div className="mt-6 rounded-xl border border-gray-200 bg-white p-4">
-                        <h3 className="mb-2 text-lg font-semibold">Summary</h3>
-                        <p className="whitespace-pre-wrap text-gray-700">
-                            {summary}
-                        </p>
+                {isLoading && (
+                    <div className="mx-auto mt-10 max-w-5xl px-6 pb-10">
+                        <div className="flex flex-col items-center justify-center rounded-3xl border border-neutral-800 bg-neutral-950 px-6 py-12">
+                            <div className="h-10 w-10 animate-spin rounded-full border-2 border-neutral-700 border-t-violet-500" />
+
+                            <h3 className="mt-5 text-lg font-medium">
+                                Analyzing your document...
+                            </h3>
+
+                            <p className="mt-2 text-sm text-neutral-500">
+                                Extracting insights with AI
+                            </p>
+                        </div>
                     </div>
                 )}
+
+                {summary && !isLoading && <SummaryCard summary={summary} />}
 
             </div>
         </section>
