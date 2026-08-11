@@ -6,6 +6,7 @@ import { extractText } from "@/lib/pdf";
 export default function UploadCard() {
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [selectedFile, setSelectedFile] = useState<File | null>(null);
+    const [summary, setSummary] = useState("");
     return (
         <section className="mx-auto max-w-4xl px-6 pb-20">
             <div className="rounded-3xl border-2 border-dashed border-neutral-700 bg-neutral-900/50 p-12 text-center transition hover:border-violet-500">
@@ -40,7 +41,17 @@ export default function UploadCard() {
 
                         const text = await extractText(file);
 
-                        console.log(text);
+                        const response = await fetch("/api/summarize", {
+                            method: "POST",
+                            headers: {
+                                "Content-Type": "application/json",
+                            },
+                            body: JSON.stringify({ text }),
+                        });
+
+                        const data = await response.json();
+
+                        setSummary(data.summary);
                     }}
                 />
 
@@ -53,6 +64,15 @@ export default function UploadCard() {
                 <p className="mt-4 text-sm text-neutral-500">
                     Supports PDF • Max 20 MB
                 </p>
+
+                {summary && (
+                    <div className="mt-6 rounded-xl border border-gray-200 bg-white p-4">
+                        <h3 className="mb-2 text-lg font-semibold">Summary</h3>
+                        <p className="whitespace-pre-wrap text-gray-700">
+                            {summary}
+                        </p>
+                    </div>
+                )}
 
             </div>
         </section>
